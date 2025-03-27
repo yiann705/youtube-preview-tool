@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="YouTube 影片預覽工具 - 輕鬆查看和分析 YouTube 影片數據">
+    <meta property="og:title" content="YouTube 影片預覽工具">
+    <meta property="og:description" content="輕鬆查看和分析 YouTube 影片數據">
+    <meta property="og:type" content="website">
+    <title>YouTube 影片預覽工具</title>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .page-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #1f1f1f;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 1;
+        }
+
+        .upload-btn {
+            background: #1a73e8;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .upload-btn:hover {
+            background: #1557b0;
+        }
+
+        .video-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 比例 */
+        }
+
+        .video-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .quarter-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1;
+        }
+
+        .data-container {
+            padding: 15px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .data-value {
+            color: #1f1f1f;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .loading {
+            display: none;
+            margin-left: 10px;
+            color: #666;
+        }
+
+        .error-message {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .share-button {
+            background: #34a853;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .share-button:hover {
+            background: #2d9144;
+        }
+
+        .share-link {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .copy-button {
+            background: #1a73e8;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .video-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+
+        .video-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .thumbnail-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 寬高比 */
+            margin-bottom: 10px;
+        }
+
+        .thumbnail {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #1f1f1f;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            height: 40px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            font-size: 13px;
+            color: #606060;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-label {
+            color: #606060;
+            font-size: 12px;
+        }
+
+        .stat-value {
+            color: #1f1f1f;
+            font-weight: 500;
+        }
+
+        .quarter {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-title">
+        <span>YouTube 影片預覽工具</span>
+        <button onclick="shareUrl()" class="share-button">分享頁面</button>
+    </div>
+    <div class="header">
+        <div class="button-group">
+            <button id="loadDataButton" class="upload-btn">載入數據</button>
+            <span id="loading" class="loading">處理中...</span>
+        </div>
+    </div>
+    <div id="error" class="error-message"></div>
+    <div id="videoGrid" class="video-grid"></div>
+    <div id="toast" class="toast">連結已複製到剪貼簿</div>
+
+    <script>
+        // Google Sheets 設定
+        const SPREADSHEET_ID = '10NY53aF3mUg8cvnYV99O3cBE3BXTlwGR1j38yyM-_3w';
+        
+        // 載入 Google Sheets 數據
+        async function loadSheetsData() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'inline';
+            
+            try {
+                // 添加參數確保獲取完整數據
+                const timestamp = new Date().getTime();
+                const response = await fetch(
+                    `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?` +
+                    `tqx=out:json&` +
+                    `tq=${encodeURIComponent('select *')}&` +
+                    `headers=1&` +
+                    `_=${timestamp}`
+                );
+                
+                if (!response.ok) {
+                    throw new Error('無法讀取 Google Sheets');
+                }
+
+                const text = await response.text();
+                const json = JSON.parse(text.substr(47).slice(0, -2));
+                
+                // 檢查數據完整性
+                if (!json.table || !json.table.rows) {
+                    throw new Error('數據格式不正確');
+                }
+                
+                const rows = json.table.rows;
+                console.log('API 返回的原始數據:', json);
+                console.log('實際行數:', rows.length);
+                
+                // 檢查是否所有行都有數據
+                rows.forEach((row, index) => {
+                    if (!row.c) {
+                        console.warn(`第 ${index} 行數據缺失:`, row);
+                    } else {
+                        console.log(`第 ${index} 行數據:`, 
+                            row.c.map(cell => cell ? (cell.f || cell.v || '') : '').join(', ')
+                        );
+                    }
+                });
+
+                if (rows.length > 0) {  // 改為 > 0，因為不需要跳過標題列
+                    // 直接處理所有數據，不需要 slice(1)
+                    const processedData = rows.map((row, index) => {
+                        if (!row.c) {
+                            console.warn(`跳過無效行 ${index}`);
+                            return null;
+                        }
+
+                        const cells = row.c;
+                        const rowValues = cells.map((cell, cellIndex) => {
+                            const value = cell ? (cell.f || cell.v || '') : '';
+                            console.log(`第 ${index} 行第 ${cellIndex + 1} 列的值:`, value);
+                            return value;
+                        });
+
+                        // 構建行數據
+                        const rowData = {
+                            '顯示A1欄位': rowValues[0].includes('/') ? 
+                                rowValues[0].split('/').slice(0, 2).join('年') + '月' : 
+                                rowValues[0],
+                            'url': rowValues[1],
+                            '聯播網': rowValues[2],
+                            '鉤子': rowValues[3],
+                            '風格': rowValues[4],
+                            '秒數': rowValues[5],
+                            '花費總和': rowValues[6],
+                            'CPI': rowValues[7],
+                            'IR': rowValues[8],
+                            'CPM': rowValues[9]
+                        };
+
+                        console.log(`處理完成第 ${index} 行:`, rowData);
+                        return rowData;
+                    });
+
+                    // 移除無效數據
+                    const validData = processedData.filter(row => row !== null);
+                    console.log('有效數據行數:', validData.length);
+                    console.log('最終處理後的數據:', validData);
+
+                    if (validData.length < rows.length) {
+                        console.warn('部分數據未能成功處理', {
+                            '原始行數': rows.length,
+                            '處理後行數': validData.length
+                        });
+                    }
+
+                    displayVideos(validData);
+                } else {
+                    showError('Google Sheets 中沒有數據');
+                }
+            } catch (error) {
+                console.error('數據載入錯誤:', error);
+                showError('讀取 Google Sheets 失敗: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // 綁定載入按鈕事件
+        document.getElementById('loadDataButton').addEventListener('click', loadSheetsData);
+
+        // 格式化函數
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '0';
+            // 移除所有逗號後轉換為數字
+            const value = Number(String(num).replace(/,/g, ''));
+            if (isNaN(value)) return '0';
+            return value.toLocaleString('zh-TW');
+        }
+
+        function formatPercentage(num) {
+            if (num === null || num === undefined) return '0.000%';
+            // 如果已經是百分比格式，直接返回
+            if (typeof num === 'string' && num.includes('%')) {
+                return num;
+            }
+            const value = Number(String(num).replace(/[%,]/g, ''));
+            if (isNaN(value)) return '0.000%';
+            // 不需要乘以 100，因為原始數據已經是百分比格式
+            return `${value.toFixed(3)}%`;
+        }
+
+        function displayVideos(data) {
+            const grid = document.getElementById('videoGrid');
+            grid.innerHTML = '';
+            
+            console.log('開始處理數據，總行數:', data.length);
+            
+            data.forEach((row, index) => {
+                console.log(`處理第 ${index + 1} 行數據:`, {
+                    url: row.url,
+                    花費總和: row['花費總和']
+                });
+                
+                const videoId = extractVideoId(row.url);
+                if (!videoId) {
+                    console.log(`第 ${index + 1} 行無法提取視頻ID:`, row.url);
+                }
+
+                // 創建卡片（無論是否有視頻ID）
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.innerHTML = `
+                    <a href="${row.url}" target="_blank">
+                        <div class="thumbnail-wrapper">
+                            <img class="thumbnail" 
+                                 src="https://img.youtube.com/vi/${videoId}/maxresdefault.jpg" 
+                                 onerror="this.src='https://img.youtube.com/vi/${videoId}/hqdefault.jpg'"
+                                 alt="${row['聯播網'] || '影片縮圖'}"
+                            />
+                            <div class="quarter">${row['顯示A1欄位']}</div>
+                        </div>
+                    </a>
+                    <div class="title">${row['聯播網'] || ''}</div>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <span class="stat-label">花費總和</span>
+                            <span class="stat-value">${formatNumber(row['花費總和'])}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">鉤子</span>
+                            <span class="stat-value">${row['鉤子']}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">風格</span>
+                            <span class="stat-value">${row['風格']}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">秒數</span>
+                            <span class="stat-value">${row['秒數']}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">IR</span>
+                            <span class="stat-value">${formatPercentage(row['IR'])}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">CPI</span>
+                            <span class="stat-value">${formatNumber(row['CPI'])}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">CPM</span>
+                            <span class="stat-value">${formatNumber(row['CPM'])}</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function extractVideoId(url) {
+            if (!url) {
+                console.log('URL 為空');
+                return null;
+            }
+            
+            console.log('正在解析URL:', url);
+            
+            // 嘗試使用 URL API 解析
+            try {
+                const urlObj = new URL(url);
+                const videoId = urlObj.searchParams.get('v');
+                if (videoId) {
+                    console.log('成功提取視頻ID:', videoId);
+                    return videoId;
+                }
+            } catch (e) {
+                console.log('URL API 解析失敗:', e);
+            }
+            
+            // 如果 URL API 失敗，使用正則表達式作為備用方案
+            const patterns = [
+                /[?&]v=([-\w]+)/i, // 標準格式 ?v=，不區分大小寫
+                /youtu\.be\/([-\w]+)/i, // 短網址格式，不區分大小寫
+                /youtube\.com\/shorts\/([-\w]+)/i, // Shorts 格式，不區分大小寫
+                /youtube\.com\/embed\/([-\w]+)/i // 嵌入格式，不區分大小寫
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) {
+                    console.log('使用正則表達式提取到視頻ID:', match[1]);
+                    return match[1];
+                }
+            }
+            
+            console.log('無法解析的 YouTube URL:', url);
+            return null;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function clearError() {
+            const errorDiv = document.getElementById('error');
+            errorDiv.style.display = 'none';
+        }
+
+        // 分享功能
+        function shareUrl() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                const toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, 2000);
+            }).catch(err => {
+                console.error('無法複製連結:', err);
+                alert('無法複製連結，請手動複製瀏覽器網址');
+            });
+        }
+    </script>
+</body>
+</html> 

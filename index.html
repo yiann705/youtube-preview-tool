@@ -297,22 +297,35 @@
             border-radius: 4px;
             display: none;
         }
+
+        .title-container {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .title-description {
+            color: #666;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
     <div class="page-title">
-        <span>YouTube 影片預覽工具</span>
-        <button onclick="shareUrl()" class="share-button">分享頁面</button>
-    </div>
-    <div class="header">
+        <div class="title-container">
+            <h1>YouTube 影片預覽工具</h1>
+            <span id="titleDescription" class="title-description"></span>
+        </div>
         <div class="button-group">
-            <button id="loadDataButton" class="upload-btn">載入數據</button>
-            <span id="loading" class="loading">處理中...</span>
+            <div class="file-input-wrapper">
+                <button class="upload-btn" onclick="loadData()">載入數據</button>
+            </div>
+            <div class="loading" id="loading">載入中...</div>
         </div>
     </div>
-    <div id="error" class="error-message"></div>
-    <div id="videoGrid" class="video-grid"></div>
-    <div id="toast" class="toast">連結已複製到剪貼簿</div>
+
+    <div class="error-message" id="errorMessage"></div>
+    <div id="videoContainer" class="video-grid"></div>
 
     <script>
         // Google Sheets 設定
@@ -357,6 +370,10 @@
                         完整對象: rows[0].c[8]
                     });
                 }
+
+                // 獲取標題說明（假設在 M 列，索引為 12）
+                const titleDescription = rows[0]?.c[12]?.v || '';
+                document.getElementById('titleDescription').textContent = titleDescription;
 
                 if (rows.length > 0) {
                     const processedData = rows.map((row, index) => {
@@ -472,8 +489,8 @@
         }
 
         function displayVideos(data) {
-            const grid = document.getElementById('videoGrid');
-            grid.innerHTML = '';
+            const container = document.getElementById('videoContainer');
+            container.innerHTML = '';
             
             console.log('開始處理數據，總行數:', data.length);
             
@@ -535,7 +552,7 @@
                     </div>
                 `;
                 
-                grid.appendChild(card);
+                container.appendChild(card);
             });
         }
 
@@ -580,29 +597,14 @@
         }
 
         function showError(message) {
-            const errorDiv = document.getElementById('error');
+            const errorDiv = document.getElementById('errorMessage');
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
         }
 
         function clearError() {
-            const errorDiv = document.getElementById('error');
+            const errorDiv = document.getElementById('errorMessage');
             errorDiv.style.display = 'none';
-        }
-
-        // 分享功能
-        function shareUrl() {
-            const url = window.location.href;
-            navigator.clipboard.writeText(url).then(() => {
-                const toast = document.getElementById('toast');
-                toast.style.display = 'block';
-                setTimeout(() => {
-                    toast.style.display = 'none';
-                }, 2000);
-            }).catch(err => {
-                console.error('無法複製連結:', err);
-                alert('無法複製連結，請手動複製瀏覽器網址');
-            });
         }
     </script>
 </body>

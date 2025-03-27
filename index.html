@@ -378,20 +378,18 @@
 
                         // 構建行數據
                         const rowData = {
-                            '月': rowValues[0].length === 6 ? 
-                                rowValues[0].substring(0, 4) + '年' + rowValues[0].substring(4) + '月' : 
-                                rowValues[0],
-                            '應用程式素材資源類型': rowValues[1],
-                            '斷字網址': rowValues[2],
-                            '聯播網': rowValues[3],
-                            '應用程式素材資源方向': rowValues[4],
-                            '鉤子': rowValues[5],
-                            '風格': rowValues[6],
-                            '秒數': rowValues[7],
-                            '費用': rowValues[8],
-                            'CPI': rowValues[9],
-                            'IR%': rowValues[10],
-                            'CPM': rowValues[11]
+                            '月': formatDate(rowValues[0]),
+                            '應用程式素材資源類型': rowValues[1] || '',
+                            '斷字網址': rowValues[2] || '',
+                            '聯播網': rowValues[3] || '',
+                            '應用程式素材資源方向': rowValues[4] || '',
+                            '鉤子': rowValues[5] || '',
+                            '風格': rowValues[6] || '',
+                            '秒數': rowValues[7] || '',
+                            '費用': rowValues[8] || '0',
+                            'CPI': rowValues[9] || '0',
+                            'IR%': rowValues[10] || '0',
+                            'CPM': rowValues[11] || '0'
                         };
 
                         console.log(`處理完成第 ${index} 行:`, rowData);
@@ -426,24 +424,39 @@
         document.getElementById('loadDataButton').addEventListener('click', loadSheetsData);
 
         // 格式化函數
+        function formatDate(dateStr) {
+            // 如果日期包含年月日，只保留年月
+            if (dateStr.includes('年') && dateStr.includes('月') && dateStr.includes('日')) {
+                const parts = dateStr.split('年');
+                const year = parts[0];
+                const month = parts[1].split('月')[0];
+                return `${year}年${month.padStart(2, '0')}月`;
+            }
+            return dateStr;
+        }
+
         function formatNumber(num) {
             if (num === null || num === undefined) return '0';
-            // 移除所有逗號後轉換為數字
-            const value = Number(String(num).replace(/,/g, ''));
+            // 移除所有逗號和百分比符號
+            const value = Number(String(num).replace(/[,%]/g, ''));
             if (isNaN(value)) return '0';
-            return value.toLocaleString('zh-TW');
+            // 如果是費用，顯示千分位
+            return Math.round(value).toLocaleString('zh-TW');
         }
 
         function formatPercentage(num) {
             if (num === null || num === undefined) return '0.000%';
-            // 如果已經是百分比格式，直接返回
-            if (typeof num === 'string' && num.includes('%')) {
-                return num;
-            }
-            const value = Number(String(num).replace(/[%,]/g, ''));
+            // 移除所有逗號和百分比符號
+            let value = String(num).replace(/[,%]/g, '');
+            // 轉換為數字
+            value = Number(value);
             if (isNaN(value)) return '0.000%';
-            // 不需要乘以 100，因為原始數據已經是百分比格式
-            return `${value.toFixed(3)}%`;
+            // 如果值大於 1，假設它已經是百分比格式
+            if (value > 1) {
+                value = value / 100;
+            }
+            // 顯示到小數點後三位
+            return (value * 100).toFixed(3) + '%';
         }
 
         function displayVideos(data) {
@@ -501,11 +514,11 @@
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">CPI</span>
-                            <span class="stat-value">${formatNumber(row['CPI'])}</span>
+                            <span class="stat-value">${Math.round(row['CPI'])}</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">CPM</span>
-                            <span class="stat-value">${formatNumber(row['CPM'])}</span>
+                            <span class="stat-value">${Math.round(row['CPM'])}</span>
                         </div>
                     </div>
                 `;

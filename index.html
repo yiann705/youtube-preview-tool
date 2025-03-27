@@ -342,64 +342,89 @@
         // Google Sheets 設定
         const SPREADSHEET_ID = '1mYyD-SJVJYTgOEAe9HvFGKJ6nZQQdn3_KTmjKF-nqYY';
         const API_KEY = 'AIzaSyAg6pgWJcjxpz5YuqdjBBRe_0Yc5_KyFmw';
-        
+        const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+
         // 初始化 Google API 客戶端
-        function initClient() {
-            gapi.client.init({
-                apiKey: API_KEY,
-            }).then(() => {
-                return gapi.client.load('sheets', 'v4');
-            }).then(() => {
-                // API 客戶端初始化完成後，添加事件監聽器
-                document.getElementById('loadDataButton').addEventListener('click', loadData);
-                console.log('Google Sheets API 客戶端初始化完成');
-            }).catch((error) => {
-                console.error('Google Sheets API 客戶端初始化失敗:', error);
-                showError('初始化失敗: ' + (error.details || error.message || '未知錯誤'));
-            });
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
         }
 
-        // 載入 Google Sheets API
-        gapi.load('client', initClient);
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
 
-        function loadData() {
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: '1075318368402-0om2vcj1qp0peirhd17j1h7tp3hg78nj.apps.googleusercontent.com',
+                scope: SCOPES,
+                callback: '', // 定義在後面
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                document.getElementById('loadDataButton').addEventListener('click', handleAuthClick);
+            }
+        }
+
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    throw (resp);
+                }
+                await loadData();
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        async function loadData() {
             showLoading();
             clearError();
-            
-            gapi.client.sheets.spreadsheets.values.get({
-                spreadsheetId: SPREADSHEET_ID,
-                range: 'A1:M100'
-            }).then(function(response) {
-                try {
-                    const values = response.result.values;
-                    if (!values || values.length === 0) {
-                        throw new Error('沒有找到數據');
-                    }
+            try {
+                const response = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: SPREADSHEET_ID,
+                    range: 'A1:M100',
+                });
 
-                    // 將數據轉換為所需的格式
-                    const json = {
-                        table: {
-                            rows: values.map(row => ({
-                                c: row.map(cell => ({
-                                    v: cell,
-                                    f: cell
-                                }))
-                            }))
-                        }
-                    };
-
-                    processData(json);
-                    hideLoading();
-                } catch (error) {
-                    console.error('處理數據時發生錯誤:', error);
-                    showError('處理數據時發生錯誤: ' + error.message);
-                    hideLoading();
+                const values = response.result.values;
+                if (!values || values.length === 0) {
+                    throw new Error('沒有找到數據');
                 }
-            }).catch(function(error) {
-                console.error('載入數據時發生錯誤:', error);
-                showError('載入數據時發生錯誤: ' + (error.details || error.message || '未知錯誤'));
-                hideLoading();
-            });
+
+                const json = {
+                    table: {
+                        rows: values.map(row => ({
+                            c: row.map(cell => ({
+                                v: cell,
+                                f: cell
+                            }))
+                        }))
+                    }
+                };
+
+                processData(json);
+            } catch (err) {
+                console.error('載入數據時發生錯誤:', err);
+                showError('載入數據時發生錯誤: ' + (err.details || err.message || '未知錯誤'));
+            }
+            hideLoading();
         }
 
         function showLoading() {
@@ -629,5 +654,7 @@
             errorDiv.style.display = 'none';
         }
     </script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html> 

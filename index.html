@@ -328,18 +328,23 @@
     <div id="videoContainer" class="video-grid"></div>
 
     <script>
+        // Google Sheets 設定
+        const SPREADSHEET_ID = '1mYyD-SJVJYTgOEAe9HvFGKJ6nZQQdn3_KTmjKF-nqYY';
+        const API_KEY = 'AIzaSyAg6pgWJcjxpz5YuqdjBBRe_0Yc5_KyFmw';
+        
         // 初始化 Google API 客戶端
         function initClient() {
             gapi.client.init({
-                apiKey: 'AIzaSyAg6pgWJcjxpz5YuqdjBBRe_0Yc5_KyFmw',
-                discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-            }).then(function () {
+                apiKey: API_KEY,
+            }).then(() => {
+                return gapi.client.load('sheets', 'v4');
+            }).then(() => {
                 // API 客戶端初始化完成後，添加事件監聽器
                 document.getElementById('loadDataButton').addEventListener('click', loadData);
                 console.log('Google Sheets API 客戶端初始化完成');
-            }).catch(function(error) {
+            }).catch((error) => {
                 console.error('Google Sheets API 客戶端初始化失敗:', error);
-                showError('初始化失敗: ' + error.message);
+                showError('初始化失敗: ' + (error.details || error.message || '未知錯誤'));
             });
         }
 
@@ -349,16 +354,10 @@
         function loadData() {
             showLoading();
             clearError();
-
-            const timestamp = new Date().getTime();
-            const sheetId = '1mYyD-SJVJYTgOEAe9HvFGKJ6nZQQdn3_KTmjKF-nqYY';
-            const range = 'A1:M100';
             
             gapi.client.sheets.spreadsheets.values.get({
-                spreadsheetId: sheetId,
-                range: range,
-                valueRenderOption: 'FORMATTED_VALUE',
-                dateTimeRenderOption: 'FORMATTED_STRING'
+                spreadsheetId: SPREADSHEET_ID,
+                range: 'A1:M100'
             }).then(function(response) {
                 try {
                     const values = response.result.values;
@@ -387,7 +386,7 @@
                 }
             }).catch(function(error) {
                 console.error('載入數據時發生錯誤:', error);
-                showError('載入數據時發生錯誤: ' + error.message);
+                showError('載入數據時發生錯誤: ' + (error.details || error.message || '未知錯誤'));
                 hideLoading();
             });
         }
@@ -400,48 +399,10 @@
             document.getElementById('loading').style.display = 'none';
         }
 
-        // Google Sheets 設定
-        const SPREADSHEET_ID = '10NY53aF3mUg8cvnYV99O3cBE3BXTlwGR1j38yyM-_3w';
-        
-        // 載入 Google Sheets 數據
-        async function loadSheetsData() {
-            const loading = document.getElementById('loading');
-            loading.style.display = 'inline';
-            
+        function processData(json) {
             try {
-                // 添加參數確保獲取完整數據
-                const timestamp = new Date().getTime();
-                const response = await fetch(
-                    `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?` +
-                    `tqx=out:json&` +
-                    `tq=${encodeURIComponent('select *')}&` +
-                    `headers=1&` +
-                    `_=${timestamp}`
-                );
-                
-                if (!response.ok) {
-                    throw new Error('無法讀取 Google Sheets');
-                }
-
-                const text = await response.text();
-                const json = JSON.parse(text.substr(47).slice(0, -2));
-                
-                // 檢查數據完整性
-                if (!json.table || !json.table.rows) {
-                    throw new Error('數據格式不正確');
-                }
-                
                 const rows = json.table.rows;
                 console.log('API 返回的原始數據:', json);
-                
-                // 檢查第一行的費用欄位原始數據
-                if (rows[0] && rows[0].c && rows[0].c[8]) {
-                    console.log('費用欄位原始數據:', {
-                        v: rows[0].c[8].v,
-                        f: rows[0].c[8].f,
-                        完整對象: rows[0].c[8]
-                    });
-                }
 
                 // 獲取標題說明（假設在 M 列，索引為 12）
                 const titleDescription = rows[0]?.c[12]?.v || '';
@@ -455,17 +416,7 @@
                         }
 
                         const cells = row.c;
-                        const rowValues = cells.map((cell, cellIndex) => {
-                            // 對於費用欄位（第9列），使用原始數值
-                            if (cellIndex === 8) {  // 費用是第9列（索引8）
-                                if (!cell) return 0;
-                                // 使用 v 屬性（原始數值）而不是 f 屬性（格式化的值）
-                                const value = cell.v || 0;
-                                console.log('費用原始值:', value);
-                                return value;
-                            }
-                            return cell ? (cell.f || cell.v || '') : '';
-                        });
+                        const rowValues = cells.map(cell => cell ? (cell.v || '') : '');
 
                         // 構建行數據
                         const rowData = {
@@ -491,22 +442,13 @@
                     console.log('有效數據行數:', validData.length);
                     console.log('最終處理後的數據:', validData);
 
-                    if (validData.length < rows.length) {
-                        console.warn('部分數據未能成功處理', {
-                            '原始行數': rows.length,
-                            '處理後行數': validData.length
-                        });
-                    }
-
                     displayVideos(validData);
                 } else {
                     showError('Google Sheets 中沒有數據');
                 }
             } catch (error) {
-                console.error('數據載入錯誤:', error);
-                showError('讀取 Google Sheets 失敗: ' + error.message);
-            } finally {
-                loading.style.display = 'none';
+                console.error('處理數據時發生錯誤:', error);
+                showError('處理數據時發生錯誤: ' + error.message);
             }
         }
 

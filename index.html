@@ -329,15 +329,15 @@
 
     <script>
         // Google Sheets 設定
-        const SPREADSHEET_ID = '10NY53aF3mUg8cvnYV99O3cBE3BXTlwGR1j38yyM-_3w';
-        
+        const SPREADSHEET_ID = '1mYyD-SJVJYTgOEAe9HvFGKJ6nZQQdn3_KTmjKF-nqYY';
+
         // 載入 Google Sheets 數據
-        async function loadSheetsData() {
+        async function loadData() {
             const loading = document.getElementById('loading');
             loading.style.display = 'inline';
+            clearError();
             
             try {
-                // 添加參數確保獲取完整數據
                 const timestamp = new Date().getTime();
                 const response = await fetch(
                     `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?` +
@@ -354,82 +354,11 @@
                 const text = await response.text();
                 const json = JSON.parse(text.substr(47).slice(0, -2));
                 
-                // 檢查數據完整性
                 if (!json.table || !json.table.rows) {
                     throw new Error('數據格式不正確');
                 }
                 
-                const rows = json.table.rows;
-                console.log('API 返回的原始數據:', json);
-                
-                // 檢查第一行的費用欄位原始數據
-                if (rows[0] && rows[0].c && rows[0].c[8]) {
-                    console.log('費用欄位原始數據:', {
-                        v: rows[0].c[8].v,
-                        f: rows[0].c[8].f,
-                        完整對象: rows[0].c[8]
-                    });
-                }
-
-                // 獲取標題說明（假設在 M 列，索引為 12）
-                const titleDescription = rows[0]?.c[12]?.v || '';
-                document.getElementById('titleDescription').textContent = titleDescription;
-
-                if (rows.length > 0) {
-                    const processedData = rows.map((row, index) => {
-                        if (!row.c) {
-                            console.warn(`跳過無效行 ${index}`);
-                            return null;
-                        }
-
-                        const cells = row.c;
-                        const rowValues = cells.map((cell, cellIndex) => {
-                            // 對於費用欄位（第9列），使用原始數值
-                            if (cellIndex === 8) {  // 費用是第9列（索引8）
-                                if (!cell) return 0;
-                                // 使用 v 屬性（原始數值）而不是 f 屬性（格式化的值）
-                                const value = cell.v || 0;
-                                console.log('費用原始值:', value);
-                                return value;
-                            }
-                            return cell ? (cell.f || cell.v || '') : '';
-                        });
-
-                        // 構建行數據
-                        const rowData = {
-                            '月': formatDate(rowValues[0]),
-                            '應用程式素材資源類型': rowValues[1] || '',
-                            '斷字網址': rowValues[2] || '',
-                            '聯播網': rowValues[3] || '',
-                            '應用程式素材資源方向': rowValues[4] || '',
-                            '鉤子': rowValues[5] || '',
-                            '風格': rowValues[6] || '',
-                            '秒數': rowValues[7] || '',
-                            '費用': Number(rowValues[8]) || 0,
-                            'CPI': rowValues[9] || '0',
-                            'IR%': rowValues[10] || '0',
-                            'CPM': rowValues[11] || '0'
-                        };
-
-                        return rowData;
-                    });
-
-                    // 移除無效數據
-                    const validData = processedData.filter(row => row !== null);
-                    console.log('有效數據行數:', validData.length);
-                    console.log('最終處理後的數據:', validData);
-
-                    if (validData.length < rows.length) {
-                        console.warn('部分數據未能成功處理', {
-                            '原始行數': rows.length,
-                            '處理後行數': validData.length
-                        });
-                    }
-
-                    displayVideos(validData);
-                } else {
-                    showError('Google Sheets 中沒有數據');
-                }
+                processData(json);
             } catch (error) {
                 console.error('數據載入錯誤:', error);
                 showError('讀取 Google Sheets 失敗: ' + error.message);
@@ -438,8 +367,27 @@
             }
         }
 
-        // 綁定載入按鈕事件
-        document.getElementById('loadDataButton').addEventListener('click', loadSheetsData);
+        // 顯示錯誤信息
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // 清除錯誤信息
+        function clearError() {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+        }
+
+        // 初始化頁面
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadButton = document.getElementById('loadDataButton');
+            if (loadButton) {
+                loadButton.addEventListener('click', loadData);
+            }
+        });
 
         // 格式化函數
         function formatDate(dateStr) {
@@ -596,15 +544,78 @@
             return null;
         }
 
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
+        function processData(json) {
+            const rows = json.table.rows;
+            console.log('API 返回的原始數據:', json);
+            
+            // 檢查第一行的費用欄位原始數據
+            if (rows[0] && rows[0].c && rows[0].c[8]) {
+                console.log('費用欄位原始數據:', {
+                    v: rows[0].c[8].v,
+                    f: rows[0].c[8].f,
+                    完整對象: rows[0].c[8]
+                });
+            }
 
-        function clearError() {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.style.display = 'none';
+            // 獲取標題說明（假設在 M 列，索引為 12）
+            const titleDescription = rows[0]?.c[12]?.v || '';
+            document.getElementById('titleDescription').textContent = titleDescription;
+
+            if (rows.length > 0) {
+                const processedData = rows.map((row, index) => {
+                    if (!row.c) {
+                        console.warn(`跳過無效行 ${index}`);
+                        return null;
+                    }
+
+                    const cells = row.c;
+                    const rowValues = cells.map((cell, cellIndex) => {
+                        // 對於費用欄位（第9列），使用原始數值
+                        if (cellIndex === 8) {  // 費用是第9列（索引8）
+                            if (!cell) return 0;
+                            // 使用 v 屬性（原始數值）而不是 f 屬性（格式化的值）
+                            const value = cell.v || 0;
+                            console.log('費用原始值:', value);
+                            return value;
+                        }
+                        return cell ? (cell.f || cell.v || '') : '';
+                    });
+
+                    // 構建行數據
+                    const rowData = {
+                        '月': formatDate(rowValues[0]),
+                        '應用程式素材資源類型': rowValues[1] || '',
+                        '斷字網址': rowValues[2] || '',
+                        '聯播網': rowValues[3] || '',
+                        '應用程式素材資源方向': rowValues[4] || '',
+                        '鉤子': rowValues[5] || '',
+                        '風格': rowValues[6] || '',
+                        '秒數': rowValues[7] || '',
+                        '費用': Number(rowValues[8]) || 0,
+                        'CPI': rowValues[9] || '0',
+                        'IR%': rowValues[10] || '0',
+                        'CPM': rowValues[11] || '0'
+                    };
+
+                    return rowData;
+                });
+
+                // 移除無效數據
+                const validData = processedData.filter(row => row !== null);
+                console.log('有效數據行數:', validData.length);
+                console.log('最終處理後的數據:', validData);
+
+                if (validData.length < rows.length) {
+                    console.warn('部分數據未能成功處理', {
+                        '原始行數': rows.length,
+                        '處理後行數': validData.length
+                    });
+                }
+
+                displayVideos(validData);
+            } else {
+                showError('Google Sheets 中沒有數據');
+            }
         }
     </script>
 </body>

@@ -348,21 +348,17 @@
                 
                 const rows = json.table.rows;
                 console.log('API 返回的原始數據:', json);
-                console.log('實際行數:', rows.length);
                 
-                // 檢查是否所有行都有數據
-                rows.forEach((row, index) => {
-                    if (!row.c) {
-                        console.warn(`第 ${index} 行數據缺失:`, row);
-                    } else {
-                        console.log(`第 ${index} 行數據:`, 
-                            row.c.map(cell => cell ? (cell.f || cell.v || '') : '').join(', ')
-                        );
-                    }
-                });
+                // 檢查第一行的費用欄位原始數據
+                if (rows[0] && rows[0].c && rows[0].c[8]) {
+                    console.log('費用欄位原始數據:', {
+                        v: rows[0].c[8].v,
+                        f: rows[0].c[8].f,
+                        完整對象: rows[0].c[8]
+                    });
+                }
 
-                if (rows.length > 0) {  // 改為 > 0，因為不需要跳過標題列
-                    // 直接處理所有數據，不需要 slice(1)
+                if (rows.length > 0) {
                     const processedData = rows.map((row, index) => {
                         if (!row.c) {
                             console.warn(`跳過無效行 ${index}`);
@@ -371,17 +367,15 @@
 
                         const cells = row.c;
                         const rowValues = cells.map((cell, cellIndex) => {
-                            // 使用 cell.f（格式化的值）或 cell.v（原始值）
-                            let value = cell ? (cell.f || cell.v || '') : '';
-                            // 對於費用欄位（第9列），使用格式化的值
+                            // 對於費用欄位（第9列），使用原始數值
                             if (cellIndex === 8) {  // 費用是第9列（索引8）
-                                value = cell ? (cell.f || cell.v || '0') : '0';
-                                // 移除可能的逗號
-                                value = String(value).replace(/,/g, '');
+                                if (!cell) return 0;
+                                // 使用 v 屬性（原始數值）而不是 f 屬性（格式化的值）
+                                const value = cell.v || 0;
                                 console.log('費用原始值:', value);
+                                return value;
                             }
-                            console.log(`第 ${index} 行第 ${cellIndex + 1} 列的值:`, value);
-                            return value;
+                            return cell ? (cell.f || cell.v || '') : '';
                         });
 
                         // 構建行數據
@@ -400,7 +394,6 @@
                             'CPM': rowValues[11] || '0'
                         };
 
-                        console.log(`處理完成第 ${index} 行:`, rowData);
                         return rowData;
                     });
 

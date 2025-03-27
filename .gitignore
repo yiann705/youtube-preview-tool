@@ -1,0 +1,17 @@
+# 忽略 Excel 和 CSV 文件
+*.xlsx
+*.csv
+
+# 忽略備份文件
+*.backup
+
+# 忽略 Python 編譯文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略環境文件
+.env
+.venv
+env/
+venv/ 

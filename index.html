@@ -378,18 +378,20 @@
 
                         // 構建行數據
                         const rowData = {
-                            '顯示A1欄位': rowValues[0].includes('/') ? 
-                                rowValues[0].split('/').slice(0, 2).join('年') + '月' : 
+                            '月': rowValues[0].length === 6 ? 
+                                rowValues[0].substring(0, 4) + '年' + rowValues[0].substring(4) + '月' : 
                                 rowValues[0],
-                            'url': rowValues[1],
-                            '聯播網': rowValues[2],
-                            '鉤子': rowValues[3],
-                            '風格': rowValues[4],
-                            '秒數': rowValues[5],
-                            '花費總和': rowValues[6],
-                            'CPI': rowValues[7],
-                            'IR': rowValues[8],
-                            'CPM': rowValues[9]
+                            '應用程式素材資源類型': rowValues[1],
+                            '斷字網址': rowValues[2],
+                            '聯播網': rowValues[3],
+                            '應用程式素材資源方向': rowValues[4],
+                            '鉤子': rowValues[5],
+                            '風格': rowValues[6],
+                            '秒數': rowValues[7],
+                            '費用': rowValues[8],
+                            'CPI': rowValues[9],
+                            'IR%': rowValues[10],
+                            'CPM': rowValues[11]
                         };
 
                         console.log(`處理完成第 ${index} 行:`, rowData);
@@ -452,34 +454,34 @@
             
             data.forEach((row, index) => {
                 console.log(`處理第 ${index + 1} 行數據:`, {
-                    url: row.url,
-                    花費總和: row['花費總和']
+                    url: row['斷字網址'],
+                    費用: row['費用']
                 });
                 
-                const videoId = extractVideoId(row.url);
+                const videoId = extractVideoId(row['斷字網址']);
                 if (!videoId) {
-                    console.log(`第 ${index + 1} 行無法提取視頻ID:`, row.url);
+                    console.log(`第 ${index + 1} 行無法提取視頻ID:`, row['斷字網址']);
                 }
 
-                // 創建卡片（無論是否有視頻ID）
+                // 創建卡片
                 const card = document.createElement('div');
                 card.className = 'video-card';
                 card.innerHTML = `
-                    <a href="${row.url}" target="_blank">
+                    <a href="${row['斷字網址']}" target="_blank">
                         <div class="thumbnail-wrapper">
                             <img class="thumbnail" 
                                  src="https://img.youtube.com/vi/${videoId}/maxresdefault.jpg" 
                                  onerror="this.src='https://img.youtube.com/vi/${videoId}/hqdefault.jpg'"
                                  alt="${row['聯播網'] || '影片縮圖'}"
                             />
-                            <div class="quarter">${row['顯示A1欄位']}</div>
+                            <div class="quarter">${row['月']}</div>
                         </div>
                     </a>
                     <div class="title">${row['聯播網'] || ''}</div>
                     <div class="stats">
                         <div class="stat-item">
-                            <span class="stat-label">花費總和</span>
-                            <span class="stat-value">${formatNumber(row['花費總和'])}</span>
+                            <span class="stat-label">費用</span>
+                            <span class="stat-value">${formatNumber(row['費用'])}</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">鉤子</span>
@@ -494,8 +496,8 @@
                             <span class="stat-value">${row['秒數']}</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-label">IR</span>
-                            <span class="stat-value">${formatPercentage(row['IR'])}</span>
+                            <span class="stat-label">IR%</span>
+                            <span class="stat-value">${formatPercentage(row['IR%'])}</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">CPI</span>
@@ -507,6 +509,7 @@
                         </div>
                     </div>
                 `;
+                
                 grid.appendChild(card);
             });
         }

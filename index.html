@@ -371,7 +371,15 @@
 
                         const cells = row.c;
                         const rowValues = cells.map((cell, cellIndex) => {
-                            const value = cell ? (cell.f || cell.v || '') : '';
+                            // 使用 cell.f（格式化的值）或 cell.v（原始值）
+                            let value = cell ? (cell.f || cell.v || '') : '';
+                            // 對於費用欄位（第9列），使用格式化的值
+                            if (cellIndex === 8) {  // 費用是第9列（索引8）
+                                value = cell ? (cell.f || cell.v || '0') : '0';
+                                // 移除可能的逗號
+                                value = String(value).replace(/,/g, '');
+                                console.log('費用原始值:', value);
+                            }
                             console.log(`第 ${index} 行第 ${cellIndex + 1} 列的值:`, value);
                             return value;
                         });
@@ -386,7 +394,7 @@
                             '鉤子': rowValues[5] || '',
                             '風格': rowValues[6] || '',
                             '秒數': rowValues[7] || '',
-                            '費用': rowValues[8] || '0',
+                            '費用': Number(rowValues[8]) || 0,
                             'CPI': rowValues[9] || '0',
                             'IR%': rowValues[10] || '0',
                             'CPM': rowValues[11] || '0'
@@ -435,14 +443,23 @@
             return dateStr;
         }
 
+        function processNumericValue(value) {
+            if (value === null || value === undefined) return '0';
+            // 移除所有逗號和百分比符號
+            const cleanValue = String(value).replace(/[,%]/g, '');
+            // 轉換為數字
+            const numValue = Number(cleanValue);
+            if (isNaN(numValue)) return '0';
+            // 如果值帶有百分比符號，需要除以 100
+            return String(value).includes('%') ? (numValue / 100) : numValue;
+        }
+
         function formatNumber(num) {
             if (num === null || num === undefined) return '0';
-            // 移除所有逗號
-            const cleanValue = String(num).replace(/,/g, '');
-            // 轉換為數字
-            const value = Number(cleanValue);
+            // 確保是數字
+            const value = Number(num);
             if (isNaN(value)) return '0';
-            // 如果是費用，顯示千分位，不需要小數點
+            // 四捨五入到整數並添加千分位
             return Math.round(value).toLocaleString('zh-TW');
         }
 

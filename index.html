@@ -437,8 +437,9 @@
 
         function formatNumber(num) {
             if (num === null || num === undefined) return '0';
-            // 移除所有逗號和百分比符號
-            const cleanValue = String(num).replace(/[,%]/g, '');
+            // 移除所有逗號
+            const cleanValue = String(num).replace(/,/g, '');
+            // 轉換為數字
             const value = Number(cleanValue);
             if (isNaN(value)) return '0';
             // 如果是費用，顯示千分位，不需要小數點

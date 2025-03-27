@@ -438,9 +438,10 @@
         function formatNumber(num) {
             if (num === null || num === undefined) return '0';
             // 移除所有逗號和百分比符號
-            const value = Number(String(num).replace(/[,%]/g, ''));
+            const cleanValue = String(num).replace(/[,%]/g, '');
+            const value = Number(cleanValue);
             if (isNaN(value)) return '0';
-            // 如果是費用，顯示千分位
+            // 如果是費用，顯示千分位，不需要小數點
             return Math.round(value).toLocaleString('zh-TW');
         }
 

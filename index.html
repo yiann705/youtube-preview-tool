@@ -341,99 +341,50 @@
     <script>
         // Google Sheets 設定
         const SPREADSHEET_ID = '1mYyD-SJVJYTgOEAe9HvFGKJ6nZQQdn3_KTmjKF-nqYY';
-        const API_KEY = 'AIzaSyAg6pgWJcjxpz5YuqdjBBRe_0Yc5_KyFmw';
-        const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
-        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
-
-        let tokenClient;
-        let gapiInited = false;
-        let gisInited = false;
-
-        // 初始化 Google API 客戶端
-        function gapiLoaded() {
-            gapi.load('client', initializeGapiClient);
-        }
-
-        async function initializeGapiClient() {
-            await gapi.client.init({
-                apiKey: API_KEY,
-                discoveryDocs: [DISCOVERY_DOC],
-            });
-            gapiInited = true;
-            maybeEnableButtons();
-        }
-
-        function gisLoaded() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: '1075318368402-0om2vcj1qp0peirhd17j1h7tp3hg78nj.apps.googleusercontent.com',
-                scope: SCOPES,
-                callback: '', // 定義在後面
-            });
-            gisInited = true;
-            maybeEnableButtons();
-        }
-
-        function maybeEnableButtons() {
-            if (gapiInited && gisInited) {
-                document.getElementById('loadDataButton').addEventListener('click', handleAuthClick);
-            }
-        }
-
-        function handleAuthClick() {
-            tokenClient.callback = async (resp) => {
-                if (resp.error !== undefined) {
-                    throw (resp);
-                }
-                await loadData();
-            };
-
-            if (gapi.client.getToken() === null) {
-                tokenClient.requestAccessToken({prompt: 'consent'});
-            } else {
-                tokenClient.requestAccessToken({prompt: ''});
-            }
-        }
-
+        
+        // 載入 Google Sheets 數據
         async function loadData() {
-            showLoading();
+            const loading = document.getElementById('loading');
+            loading.style.display = 'inline';
             clearError();
+            
             try {
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: 'A1:M100',
-                });
-
-                const values = response.result.values;
-                if (!values || values.length === 0) {
-                    throw new Error('沒有找到數據');
+                // 添加參數確保獲取完整數據
+                const timestamp = new Date().getTime();
+                const response = await fetch(
+                    `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?` +
+                    `tqx=out:json&` +
+                    `tq=${encodeURIComponent('select *')}&` +
+                    `headers=1&` +
+                    `_=${timestamp}`
+                );
+                
+                if (!response.ok) {
+                    throw new Error('無法讀取 Google Sheets');
                 }
 
-                const json = {
-                    table: {
-                        rows: values.map(row => ({
-                            c: row.map(cell => ({
-                                v: cell,
-                                f: cell
-                            }))
-                        }))
-                    }
-                };
-
+                const text = await response.text();
+                const json = JSON.parse(text.substr(47).slice(0, -2));
+                
+                // 檢查數據完整性
+                if (!json.table || !json.table.rows) {
+                    throw new Error('數據格式不正確');
+                }
+                
                 processData(json);
-            } catch (err) {
-                console.error('載入數據時發生錯誤:', err);
-                showError('載入數據時發生錯誤: ' + (err.details || err.message || '未知錯誤'));
+            } catch (error) {
+                console.error('數據載入錯誤:', error);
+                showError('讀取 Google Sheets 失敗: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
             }
-            hideLoading();
         }
 
-        function showLoading() {
-            document.getElementById('loading').style.display = 'inline-block';
-        }
-
-        function hideLoading() {
-            document.getElementById('loading').style.display = 'none';
-        }
+        // 初始化頁面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 添加載入數據按鈕的事件監聽器
+            document.getElementById('loadDataButton').addEventListener('click', loadData);
+        });
 
         function processData(json) {
             try {

@@ -318,7 +318,7 @@
         </div>
         <div class="button-group">
             <div class="file-input-wrapper">
-                <button class="upload-btn" onclick="loadData()">載入數據</button>
+                <button id="loadDataButton" class="upload-btn">載入數據</button>
             </div>
             <div class="loading" id="loading">載入中...</div>
         </div>
@@ -328,6 +328,78 @@
     <div id="videoContainer" class="video-grid"></div>
 
     <script>
+        // 初始化 Google API 客戶端
+        function initClient() {
+            gapi.client.init({
+                apiKey: 'AIzaSyAg6pgWJcjxpz5YuqdjBBRe_0Yc5_KyFmw',
+                discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
+            }).then(function () {
+                // API 客戶端初始化完成後，添加事件監聽器
+                document.getElementById('loadDataButton').addEventListener('click', loadData);
+                console.log('Google Sheets API 客戶端初始化完成');
+            }).catch(function(error) {
+                console.error('Google Sheets API 客戶端初始化失敗:', error);
+                showError('初始化失敗: ' + error.message);
+            });
+        }
+
+        // 載入 Google Sheets API
+        gapi.load('client', initClient);
+
+        function loadData() {
+            showLoading();
+            clearError();
+
+            const timestamp = new Date().getTime();
+            const sheetId = '1mYyD-SJVJYTgOEAe9HvFGKJ6nZQQdn3_KTmjKF-nqYY';
+            const range = 'A1:M100';
+            
+            gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: sheetId,
+                range: range,
+                valueRenderOption: 'FORMATTED_VALUE',
+                dateTimeRenderOption: 'FORMATTED_STRING'
+            }).then(function(response) {
+                try {
+                    const values = response.result.values;
+                    if (!values || values.length === 0) {
+                        throw new Error('沒有找到數據');
+                    }
+
+                    // 將數據轉換為所需的格式
+                    const json = {
+                        table: {
+                            rows: values.map(row => ({
+                                c: row.map(cell => ({
+                                    v: cell,
+                                    f: cell
+                                }))
+                            }))
+                        }
+                    };
+
+                    processData(json);
+                    hideLoading();
+                } catch (error) {
+                    console.error('處理數據時發生錯誤:', error);
+                    showError('處理數據時發生錯誤: ' + error.message);
+                    hideLoading();
+                }
+            }).catch(function(error) {
+                console.error('載入數據時發生錯誤:', error);
+                showError('載入數據時發生錯誤: ' + error.message);
+                hideLoading();
+            });
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'inline-block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
         // Google Sheets 設定
         const SPREADSHEET_ID = '10NY53aF3mUg8cvnYV99O3cBE3BXTlwGR1j38yyM-_3w';
         
@@ -437,9 +509,6 @@
                 loading.style.display = 'none';
             }
         }
-
-        // 綁定載入按鈕事件
-        document.getElementById('loadDataButton').addEventListener('click', loadSheetsData);
 
         // 格式化函數
         function formatDate(dateStr) {

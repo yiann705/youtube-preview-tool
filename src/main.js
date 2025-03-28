@@ -92,9 +92,16 @@ function createTable(headers, rows) {
       if (key === "年月") {
         td.textContent = formatMonth(row["月"] || row["年月"]);
       } else if (key === "素材") {
-        td.innerHTML = videoId
-          ? `<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`
-          : "";
+        const url = row["斷字網址"];
+        if (videoId) {
+          td.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen style="width:200px; height:112px;"></iframe>`;
+        } else if (url && (/\.(jpg|jpeg|png|gif|webp)$/.test(url) || url.includes("googlesyndication.com"))) {
+          td.innerHTML = `<img src="${url}" style="max-width:200px; max-height:112px; object-fit: contain;" />`;
+        } else {
+          td.textContent = "(不支援的素材連結)";
+        }
+      }
+      
       } else if (key === "費用") {
         td.textContent = formatInteger(row["費用"]);
       } else if (key === "CPI") {

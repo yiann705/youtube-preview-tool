@@ -1,3 +1,4 @@
+// main.js
 const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
 const sheetId = import.meta.env.VITE_SHEET_ID;
 const sheetName = "工作表1";
@@ -112,7 +113,6 @@ function createTable(headers, rows) {
         const sheetKey = sheetKeyMap[key] || key;
         td.textContent = row[sheetKey] || "";
       }
-
       tr.appendChild(td);
     }
     body.appendChild(tr);
@@ -134,6 +134,21 @@ async function loadDescription() {
   } catch (err) {
     console.error("讀取說明文字失敗", err);
     document.getElementById("titleDescription").textContent = "(讀取失敗)";
+  }
+}
+
+async function loadSubDescription() {
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/N2?key=${apiKey}`;
+    console.log("🚀 N2 Request URL:", url);
+    const res = await fetch(url);
+    const data = await res.json();
+    console.log("📄 副標題資料：", data);
+    document.getElementById("subDescription").textContent =
+      data.values?.[0]?.[0] || "(副標題讀取失敗)";
+  } catch (err) {
+    console.error("❌ 副標題讀取失敗：", err);
+    document.getElementById("subDescription").textContent = "(副標題讀取失敗)";
   }
 }
 
@@ -165,9 +180,9 @@ async function loadSheetData() {
 }
 
 loadDescription();
+loadSubDescription();
 loadSheetData();
 
-// ✅ 自動顯示版本號（需搭配 vite.config.js define __APP_VERSION__）
 const versionBox = document.createElement("div");
 versionBox.textContent = __APP_VERSION__;
 versionBox.setAttribute("style", `
@@ -183,5 +198,4 @@ versionBox.setAttribute("style", `
   z-index: 999;
 `);
 document.body.appendChild(versionBox);
-
 console.log("🛠️ App Version:", __APP_VERSION__);

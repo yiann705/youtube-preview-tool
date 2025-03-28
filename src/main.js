@@ -49,7 +49,6 @@ function createTable(headers, rows) {
   const thStyle = `border: ${borderStyle}; padding: 8px; font-weight: bold; text-align: left;`;
   const tdStyle = `border: ${borderStyle}; padding: 8px; vertical-align: top;`;
 
-  // 🟡 新增欄位對應表
   const sheetKeyMap = {
     "聯播網": "聯播網 (及搜尋夥伴)",
     "素材": "斷字網址"
@@ -82,26 +81,25 @@ function createTable(headers, rows) {
   const body = document.createElement("tbody");
   for (const row of rows) {
     const tr = document.createElement("tr");
-    const videoId = extractVideoId(row["斷字網址"]);
     for (const key of displayOrder) {
       const td = document.createElement("td");
       td.setAttribute("style", tdStyle);
-
       if (key === "素材") td.classList.add("video-cell");
 
       if (key === "年月") {
         td.textContent = formatMonth(row["月"] || row["年月"]);
       } else if (key === "素材") {
-        const url = row["斷字網址"];
-        if (videoId) {
-          td.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen style="width:200px; height:112px;"></iframe>`;
-        } else if (url && (/\.(jpg|jpeg|png|gif|webp)$/.test(url) || url.includes("googlesyndication.com"))) {
+        const url = row["斷字網址"] || "";
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/.test(url) || url.includes("googlesyndication.com");
+        const videoId = extractVideoId(url);
+
+        if (isImage) {
           td.innerHTML = `<img src="${url}" style="max-width:200px; max-height:112px; object-fit: contain;" />`;
+        } else if (videoId) {
+          td.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen style="width:200px; height:112px;"></iframe>`;
         } else {
           td.textContent = "(不支援的素材連結)";
         }
-      }
-      
       } else if (key === "費用") {
         td.textContent = formatInteger(row["費用"]);
       } else if (key === "CPI") {
@@ -114,6 +112,7 @@ function createTable(headers, rows) {
         const sheetKey = sheetKeyMap[key] || key;
         td.textContent = row[sheetKey] || "";
       }
+
       tr.appendChild(td);
     }
     body.appendChild(tr);
@@ -167,3 +166,22 @@ async function loadSheetData() {
 
 loadDescription();
 loadSheetData();
+
+// ✅ 自動顯示版本號（需搭配 vite.config.js define __APP_VERSION__）
+const versionBox = document.createElement("div");
+versionBox.textContent = __APP_VERSION__;
+versionBox.setAttribute("style", `
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  font-size: 12px;
+  color: #666;
+  background: rgba(255,255,255,0.8);
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 0 4px rgba(0,0,0,0.1);
+  z-index: 999;
+`);
+document.body.appendChild(versionBox);
+
+console.log("🛠️ App Version:", __APP_VERSION__);
